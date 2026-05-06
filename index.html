@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAPMP - Sistema Policial</title>
+    <link rel="icon" href="polilogo.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root { --primary: #004085; --bg: #f4f6f9; --white: #fff; --green: #28a745; --red: #dc3545; --gray: #6c757d; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+        
+        header { background: var(--primary); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .layout { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 250px; background: #343a40; color: white; display: flex; flex-direction: column; padding-top: 20px; }
+        
+        /* BOTONES SIDEBAR */
+        .sidebar a { color: #ccc; padding: 15px 20px; text-decoration: none; display: block; border-left: 4px solid transparent; cursor: pointer; transition: all 0.3s; }
+        .sidebar a:hover { background: rgba(255,255,255,0.05); color: white; }
+        .sidebar a.active { background: rgba(255,255,255,0.15); color: white; border-left-color: var(--primary); font-weight: bold; }
+        
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; scroll-behavior: smooth; }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        
+        /* TABLA */
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: var(--primary); color: white; padding: 12px; text-align: left; font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid #eee; color: #444; }
+        
+        /* ETIQUETAS ESTATUS (Solo Colores Planos) */
+        .badge { padding: 5px 10px; border-radius: 4px; color: white; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-recibida { background-color: var(--green); }
+        .status-cerrada  { background-color: var(--red); }
+        
+        /* INPUTS Y FILTROS MODERNOS */
+        .control-bar { display: flex; gap: 10px; margin: 15px 0; }
+        
+        /* Estilo unificado para inputs y select */
+        .form-control {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.3s;
+            background-color: white;
+            color: #333;
+        }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0, 64, 133, 0.1); }
+        
+        /* ACCIONES */
+        .btn-action { border: none; background: transparent; cursor: pointer; font-size: 1.2rem; margin: 0 8px; transition: transform 0.2s; color: #555; }
+        .btn-action:hover { transform: scale(1.2); color: var(--primary); }
+
+        .stats-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .stats-box { flex: 1; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #ddd; min-width: 250px; }
+        .stats-list { list-style: none; max-height: 150px; overflow-y: auto; }
+        .stats-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { background: white; margin: 3% auto; padding: 25px; width: 90%; max-width: 600px; border-radius: 8px; max-height: 90vh; overflow-y: auto; }
+        .close { float: right; font-size: 1.5rem; cursor: pointer; }
+        
+        .form-row { display: flex; gap: 10px; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-family: inherit; }
+        
+        /* BOTONES PRINCIPALES */
+        .btn { padding: 10px 15px; border: none; cursor: pointer; color: white; border-radius: 5px; font-weight: 600; font-size: 0.9rem; transition: background 0.3s; }
+        .btn-green { background: var(--green); } .btn-green:hover { background: #218838; }
+        .btn-blue { background: var(--primary); } .btn-blue:hover { background: #003366; }
+        .btn-red { background: var(--red); } .btn-red:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <img src="polilogo.png" style="height:55px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));">
+            <div>
+                <h1 style="margin:0; font-size:1.25rem; font-weight:700;">IAPMP - Policía Municipal</h1>
+                <span style="font-size:0.9rem; opacity:0.9; text-transform: uppercase;">Ambrosio Plaza</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <div class="sidebar">
+            <div style="text-align:center; padding:20px; border-bottom: 1px solid #555;">
+                <i class="fas fa-user-circle" style="font-size:3rem; margin-bottom: 10px;"></i>
+                <p>Oficial de Guardia</p>
+            </div>
+            <a id="link-denuncias" class="active" onclick="navegar('seccion-denuncias')">
+                <i class="fas fa-list"></i> Control de Denuncias
+            </a>
+            <a id="link-stats" onclick="navegar('seccion-stats')">
+                <i class="fas fa-chart-bar"></i> Estadísticas
+            </a>
+        </div>
+
+        <div class="main-content" id="contenedor-principal">
+            
+            <div id="seccion-denuncias" class="panel">
+                <div style="display:flex; justify-content:space-between; align-items: center;">
+                    <h2><i class="fas fa-folder-open"></i> Expedientes</h2>
+                    <button class="btn btn-green" onclick="document.getElementById('modal-registro').style.display='block'">+ Nueva Denuncia</button>
+                </div>
+                
+                <div class="control-bar">
+                    <input type="text" id="buscador" class="form-control" placeholder="Buscar expediente, nombre..." onkeyup="cargarDatos()" style="flex: 2; margin-bottom: 0;">
+                    
+                    <select id="filtro-estatus" class="form-control" onchange="cargarDatos()" style="flex: 1; margin-bottom: 0; cursor: pointer;">
+                        <option value="all">Mostrar: Todos</option>
+                        <option value="recibida">Solo Abiertas</option>
+                        <option value="cerrada">Solo Cerradas</option>
+                    </select>
+
+                    <button class="btn btn-blue" onclick="cargarDatos()"><i class="fas fa-sync-alt"></i></button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Expediente</th>
+                                <th>Fecha</th>
+                                <th>Ciudadano</th>
+                                <th>Cédula</th>
+                                <th>Delito</th>
+                                <th>Asignado</th>
+                                <th>Estatus</th>
+                                <th style="text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-body">
+                            <tr><td colspan="8" style="text-align:center; padding:20px;">Cargando sistema...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="seccion-stats" class="panel">
+                <h2>Métricas Operativas</h2>
+                <div style="display:flex; gap:20px; margin-bottom:20px; flex-wrap: wrap;">
+                    <div style="flex:1; background:#e3f2fd; padding:20px; border-radius:8px; text-align:center; min-width: 200px; border: 1px solid #b8daff;">
+                        <h3 style="color:#555;">Total Global</h3>
+                        <h1 id="total-global" style="font-size:3.5rem; margin:10px 0; color:#004085;">0</h1>
+                        <span style="color:#666;">Denuncias Registradas</span>
+                    </div>
+                    <div style="flex:3; height:250px; min-width: 300px;">
+                        <canvas id="graficoMeses"></canvas>
+                    </div>
+                </div>
+                <div class="stats-container">
+                    <div class="stats-box"><h4>Por Cuadrante</h4><ul id="lista-cuadrantes" class="stats-list"></ul></div>
+                    <div class="stats-box"><h4>Por Mes</h4><ul id="lista-meses" class="stats-list"></ul></div>
+                    <div class="stats-box"><h4>Cuadrante x Mes</h4><ul id="lista-cruce" class="stats-list"></ul></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-registro" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modal-registro')">&times;</span>
+            <h2 style="border-bottom: 2px solid var(--primary); padding-bottom:10px; margin-bottom:20px;">Nueva Denuncia</h2>
+            <form id="form-registro">
+                <div style="background: #fff3cd; padding: 12px; border: 1px solid #ffeeba; border-radius: 5px; margin-bottom: 20px;">
+                    <label style="font-weight:bold; font-size:0.9rem; color:#856404;">Fecha del Suceso (Opcional):</label>
+                    <input type="date" id="reg-fecha" class="form-control" style="margin-bottom:0; width: auto; display: inline-block;">
+                    <small style="display:block; color:#856404; font-size:0.8rem; margin-top:5px;">Si se deja vacío, se usa la fecha de hoy.</small>
+                </div>
+                <div class="form-row">
+                    <input id="reg-exp" placeholder="N° Expediente" required>
+                    <select id="reg-cua"><option>Cuadrante 1</option><option>Cuadrante 2</option><option>Cuadrante 3</option><option>Cuadrante 4</option></select>
+                </div>
+                <div class="form-row">
+                    <input id="reg-nom" placeholder="Nombre Ciudadano" required>
+                    <input id="reg-ced" placeholder="Cédula" required>
+                </div>
+                <input id="reg-del" placeholder="Tipo de Delito" required>
+                <textarea id="reg-desc" placeholder="Descripción de los hechos..." rows="3"></textarea>
+                <input id="reg-asig" placeholder="Funcionario Asignado (Opcional)">
+                <button type="submit" class="btn btn-blue" style="width:100%; padding:12px;">Guardar Expediente</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-detalle" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modal-detalle')">&times;</span>
+            <h2 id="det-titulo" style="color: var(--primary);">Detalles</h2>
+            <div style="line-height: 1.8;">
+                <p><strong>Fecha:</strong> <span id="det-fecha"></span></p>
+                <p><strong>Ciudadano:</strong> <span id="det-ciudadano"></span> (C.I: <span id="det-cedula"></span>)</p>
+                <p><strong>Funcionario:</strong> <span id="det-asignado" style="font-weight:bold; color:darkblue;"></span></p>
+                <hr style="margin:10px 0; border:0; border-top:1px solid #ddd;">
+                <p><strong>Descripción:</strong></p>
+                <div id="det-descripcion" style="background:#f5f5f5; padding:15px; border-left:4px solid var(--primary); border-radius: 4px;"></div>
+            </div>
+            <br>
+            <button id="btn-cerrar-caso" class="btn btn-red" style="width:100%; padding:12px;">Cerrar Caso</button>
+        </div>
+    </div>
+
+    <div id="modal-editar" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('modal-editar')">&times;</span>
+            <h2>Editar Datos</h2>
+            <form id="form-editar">
+                <input type="hidden" id="edit-id">
+                <input id="edit-exp" placeholder="Expediente" required>
+                <div class="form-row">
+                    <input id="edit-nom" placeholder="Nombre" required>
+                    <input id="edit-ced" placeholder="Cédula" required>
+                </div>
+                <select id="edit-cua"><option>Cuadrante 1</option><option>Cuadrante 2</option><option>Cuadrante 3</option><option>Cuadrante 4</option></select>
+                <input id="edit-del" placeholder="Delito" required>
+                <input id="edit-asig" placeholder="Funcionario">
+                <textarea id="edit-desc" rows="3"></textarea>
+                <button type="submit" class="btn btn-blue" style="width:100%; background: var(--yellow); color:black;">Actualizar Datos</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+        let idDenunciaActual = null;
+
+        function navegar(seccionId) {
+            document.getElementById('link-denuncias').classList.remove('active');
+            document.getElementById('link-stats').classList.remove('active');
+            
+            if (seccionId === 'seccion-denuncias') {
+                document.getElementById('link-denuncias').classList.add('active');
+            } else {
+                document.getElementById('link-stats').classList.add('active');
+            }
+            
+            const elemento = document.getElementById(seccionId);
+            if(elemento) elemento.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarDatos);
+
+        async function cargarDatos() {
+            const tabla = document.getElementById('tabla-body');
+            const busqueda = document.getElementById('buscador').value;
+            const filtroEstatus = document.getElementById('filtro-estatus').value;
+            
+            try {
+                const res = await fetch(API_URL + '?action=listar&busqueda=' + busqueda + '&estatus=' + filtroEstatus + '&t=' + Date.now());
+                const texto = await res.text();
+                let data; 
+                try { data = JSON.parse(texto); } catch (e) { console.error(texto); return; }
+
+                tabla.innerHTML = '';
+                if(data.length === 0) {
+                    tabla.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 20px; color: #777;">No hay registros que coincidan.</td></tr>';
+                } else {
+                    for(let i=0; i<data.length; i++) {
+                        const d = data[i];
+                        const jsonSafe = JSON.stringify(d).replace(/"/g, "&quot;");
+                        const asignado = d.asignado_a ? d.asignado_a : '<span style="color:#999; font-style:italic;">Sin Asignar</span>';
+                        
+                        tabla.innerHTML += '<tr>' +
+                            '<td><strong>' + d.numero_expediente + '</strong></td>' +
+                            '<td>' + (d.fecha_registro || '-') + '</td>' + 
+                            '<td>' + d.nombre_ciudadano + '</td>' +
+                            '<td>' + d.cedula_ciudadano + '</td>' +
+                            '<td>' + d.tipo_delito + '</td>' +
+                            '<td>' + asignado + '</td>' + 
+                            '<td><span class="badge status-' + d.estatus + '">' + d.estatus + '</span></td>' +
+                            '<td style="text-align:center;">' + 
+                                '<button class="btn-action" title="Ver" onclick="verDetalle(' + jsonSafe + ')"><i class="fas fa-eye" style="color:var(--primary);"></i></button>' +
+                                '<button class="btn-action" title="Editar" onclick="abrirEditar(' + jsonSafe + ')"><i class="fas fa-pen" style="color:#e0a800;"></i></button>' +
+                                '<button class="btn-action" title="Eliminar" onclick="eliminar(' + d.id + ')"><i class="fas fa-trash" style="color:var(--red);"></i></button>' +
+                            '</td>' +
+                        '</tr>';
+                    }
+                }
+                cargarEstadisticas();
+
+            } catch (error) { tabla.innerHTML = '<tr><td colspan="9" style="color:red; text-align:center;">Error de conexión.</td></tr>'; }
+        }
+
+        async function cargarEstadisticas() {
+            try {
+                const res = await fetch(API_URL + '?action=estadisticas');
+                const stats = await res.json();
+                document.getElementById('total-global').innerText = stats.total_global;
+
+                const llenar = function(id, data, fmt) {
+                    const ul = document.getElementById(id); if(ul) { ul.innerHTML = ''; data.forEach(function(i){ ul.innerHTML += fmt(i); }); }
+                };
+                llenar('lista-cuadrantes', stats.por_cuadrante, function(i){ return '<li><span>' + i.cuadrante + '</span><strong>' + i.total + '</strong></li>'; });
+                llenar('lista-meses', stats.por_mes, function(i){ return '<li><span>' + i.mes + '</span><strong>' + i.total + '</strong></li>'; });
+                llenar('lista-cruce', stats.por_cuadrante_mes, function(i){ return '<li><span>[' + i.mes + '] ' + i.cuadrante + '</span><strong>' + i.total + '</strong></li>'; });
+
+                const ctx = document.getElementById('graficoMeses');
+                if(ctx && window.Chart) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: stats.por_mes.map(function(i){ return i.mes; }),
+                            datasets: [{ label: 'Denuncias', data: stats.por_mes.map(function(i){ return i.total; }), backgroundColor: '#004085' }]
+                        },
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    suggestedMax: 5,
+                                    ticks: { stepSize: 1 }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+
+        function closingFunc(id) { document.getElementById(id).style.display = 'none'; }
+        window.cerrarModal = closingFunc;
+
+        window.verDetalle = function(d) {
+            idDenunciaActual = d.id;
+            document.getElementById('det-titulo').innerText = d.numero_expediente;
+            document.getElementById('det-fecha').innerText = d.fecha_registro;
+            document.getElementById('det-ciudadano').innerText = d.nombre_ciudadano;
+            document.getElementById('det-cedula').innerText = d.cedula_ciudadano;
+            document.getElementById('det-asignado').innerText = d.asignado_a || 'Sin Asignar';
+            document.getElementById('det-descripcion').innerText = d.descripcion;
+            
+            const btn = document.getElementById('btn-cerrar-caso');
+            btn.style.display = (d.estatus === 'cerrada') ? 'none' : 'block';
+            document.getElementById('modal-detalle').style.display = 'block';
+        }
+
+        document.getElementById('btn-cerrar-caso').onclick = async function() {
+            if(confirm("¿Cerrar caso?")) {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({accion:'cerrar', id:idDenunciaActual}) });
+                cerrarModal('modal-detalle');
+                cargarDatos();
+            }
+        };
+
+        window.abrirEditar = function(d) {
+            document.getElementById('edit-id').value = d.id;
+            document.getElementById('edit-exp').value = d.numero_expediente;
+            document.getElementById('edit-nom').value = d.nombre_ciudadano;
+            document.getElementById('edit-ced').value = d.cedula_ciudadano;
+            document.getElementById('edit-del').value = d.tipo_delito;
+            document.getElementById('edit-cua').value = d.cuadrante;
+            document.getElementById('edit-desc').value = d.descripcion;
+            document.getElementById('edit-asig').value = d.asignado_a;
+            document.getElementById('modal-editar').style.display = 'block';
+        }
+
+        document.getElementById('form-registro').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const datos = {
+                accion: 'crear',
+                expediente: document.getElementById('reg-exp').value,
+                nombre: document.getElementById('reg-nom').value,
+                cedula: document.getElementById('reg-ced').value,
+                delito: document.getElementById('reg-del').value,
+                cuadrante: document.getElementById('reg-cua').value,
+                descripcion: document.getElementById('reg-desc').value,
+                asignado: document.getElementById('reg-asig').value,
+                fecha: document.getElementById('reg-fecha').value
+            };
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(datos) });
+            cerrarModal('modal-registro');
+            document.getElementById('form-registro').reset();
+            cargarDatos();
+        });
+
+        document.getElementById('form-editar').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const datos = {
+                accion: 'editar',
+                id: document.getElementById('edit-id').value,
+                expediente: document.getElementById('edit-exp').value,
+                nombre: document.getElementById('edit-nom').value,
+                cedula: document.getElementById('edit-ced').value,
+                delito: document.getElementById('edit-del').value,
+                cuadrante: document.getElementById('edit-cua').value,
+                descripcion: document.getElementById('edit-desc').value,
+                asignado: document.getElementById('edit-asig').value
+            };
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(datos) });
+            cerrarModal('modal-editar');
+            cargarDatos();
+        });
+
+        window.eliminar = async function(id) {
+            if(confirm("¿Eliminar registro?")) {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({accion:'eliminar', id:id}) });
+                cargarDatos();
+            }
+        }
+    </script>
+</body>
+</html>
