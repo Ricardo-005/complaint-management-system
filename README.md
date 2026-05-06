@@ -21,7 +21,7 @@ A robust Full Stack web application designed for law enforcement agencies to str
 - *Data Security:* Input validation and basic SQL injection prevention.
 
 ## 📸 Preview
-(Insert a screenshot of your dashboard or main form here)
+(complaint.wuaze.com)
 
 ## 🚀 How it works
 1. *Reporting:* Users submit a complaint through the responsive interface.
