@@ -30,4 +30,4 @@ A robust Full Stack web application designed for law enforcement agencies to str
 4. *Analytics:* The system generates statistics based on the stored data for better decision-making.
 
 ---
-*Available for freelance opportunities on [Upwork][(Tu-Link-De-Upwork-Aquí)](https://www.upwork.com/freelancers/~01b886fae355553628?companyReference=2047477432136778329&mp_source=share).*
+*Available for freelance opportunities on [Upwork][(https://www.upwork.com/freelancers/~01b886fae355553628?companyReference=2047477432136778329&mp_source=share)].*
